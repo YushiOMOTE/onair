@@ -35,10 +35,6 @@ async fn show(state: web::Data<Mutex<State>>) -> Result<NamedFile> {
     Ok(NamedFile::open(path)?)
 }
 
-async fn index() -> String {
-    format!("onair app: {}", env!("CARGO_PKG_VERSION"))
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
@@ -50,7 +46,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(data.clone())
-            .route("/", web::get().to(index))
             .route("/onair", web::get().to(show))
             .route("/onair", web::post().to(update))
     })
