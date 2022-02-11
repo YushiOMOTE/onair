@@ -7,5 +7,7 @@ edition = "2018"
 [dependencies]
 actix-files = "0.5.0"
 actix-web = "3.3.3"
+clap = { version = "3.0.14", features = ["derive"] }
 env_logger = "0.9.0"
+poem = "1.2.56"
 serde = "1.0.136"
