@@ -120,7 +120,9 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/subscribe", get(subscribe))
         .nest(
             "/view",
-            StaticFilesEndpoint::new("./static").show_files_listing(),
+            StaticFilesEndpoint::new("./static")
+                .show_files_listing()
+                .index_file("index.html"),
         )
         .data(ctx);
 
