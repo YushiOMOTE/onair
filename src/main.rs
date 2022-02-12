@@ -1,6 +1,7 @@
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use poem::{
+    endpoint::StaticFilesEndpoint,
     get, handler,
     listener::TcpListener,
     post,
@@ -117,6 +118,10 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/", get(index))
         .at("/state", post(update).get(check))
         .at("/subscribe", get(subscribe))
+        .nest(
+            "/view",
+            StaticFilesEndpoint::new("./static").show_files_listing(),
+        )
         .data(ctx);
 
     Server::new(TcpListener::bind(&args.bind)).run(app).await
