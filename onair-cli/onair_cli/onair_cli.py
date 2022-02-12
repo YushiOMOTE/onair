@@ -5,11 +5,13 @@ import subprocess
 import glob
 import requests
 import json
+import os
 from os.path import dirname, realpath
 
 
 SCRIPT = dirname(realpath(__file__))
-ENDPOINT = "http://192.168.3.200:8080/onair"
+SERVER = os.environ.get("SERVER", "192.168.3.200:8080")
+ENDPOINT = f"http://{SERVER}/state"
 
 
 def detect():
