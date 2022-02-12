@@ -1,6 +1,9 @@
-.PHONY: frontend backend release
+.PHONY: setup frontend backend release
 
 default: backend
+
+setup:
+	cd onair-fe && npm install
 
 frontend:
 	cd onair-fe && npm run build
