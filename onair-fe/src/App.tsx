@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Pane from "./Pane";
 import State from "./State";
 
-const SERVER = process.env.SERVER || "127.0.0.1:8080";
+const SERVER = window.location.host;
 const ENDPOINT = `ws://${SERVER}/subscribe`;
 
 interface Update {
