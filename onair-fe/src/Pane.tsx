@@ -20,7 +20,7 @@ const Div = styled.div`
   color: white;
   width: 100%;
   font-family: monospace;
-  font-size: 12em;
+  font-size: 20vw;
 `;
 
 export default Pane;
