@@ -1,67 +1,123 @@
-use actix_files::NamedFile;
-use actix_web::{middleware::Logger, web, App, HttpServer, Result};
 use clap::Parser;
+use futures_util::{SinkExt, StreamExt};
+use poem::{
+    get, handler,
+    listener::TcpListener,
+    post,
+    web::{
+        websocket::{Message, WebSocket},
+        Data, Json,
+    },
+    EndpointExt, IntoResponse, Route, Server,
+};
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast::{self, Sender};
+use tracing::*;
 
-struct State {
+type Context = Arc<Mutex<ContextInner>>;
+
+#[derive(Debug)]
+struct ContextInner {
     onair: bool,
+    sender: Sender<Update>,
 }
 
-#[derive(Serialize, Deserialize)]
+impl ContextInner {
+    fn new() -> Self {
+        let sender = broadcast::channel::<Update>(10).0;
+        Self {
+            onair: false,
+            sender,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Update {
     onair: bool,
 }
 
-impl State {
-    fn new() -> Self {
-        Self { onair: false }
+impl Update {
+    fn new(onair: bool) -> Self {
+        Self { onair }
     }
-}
-
-async fn update(
-    state: web::Data<Mutex<State>>,
-    req: web::Json<Update>,
-) -> Result<web::Json<Update>> {
-    state.lock().unwrap().onair = req.onair;
-    Ok(req)
-}
-
-async fn show(state: web::Data<Mutex<State>>) -> Result<NamedFile> {
-    let path = if state.lock().unwrap().onair {
-        "static/onair.html"
-    } else {
-        "static/offline.html"
-    };
-    Ok(NamedFile::open(path)?)
 }
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[clap(short = 'p', long = "port")]
-    port: u16,
+    /// Address to bind
+    #[clap(short = 'b', long = "bind", default_value = "0.0.0.0:8080")]
+    bind: String,
+    /// Enable debug print
     #[clap(short = 'd', long = "debug")]
     debug: bool,
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+#[handler]
+fn check(data: Data<&Context>) -> Json<Update> {
+    let resp = Update::new(data.lock().unwrap().onair);
+    info!("Check {:?}", resp);
+    Json(resp)
+}
+
+#[handler]
+fn update(data: Data<&Context>, update: Json<Update>) -> Json<Update> {
+    info!("Update {:?}", update);
+    let mut context = data.lock().unwrap();
+    context.onair = update.onair;
+    let _ = context.sender.send((*update).clone());
+    update
+}
+
+#[handler]
+fn subscribe(data: Data<&Context>, ws: WebSocket) -> impl IntoResponse {
+    let mut context = data.lock().unwrap();
+    let mut subscriber = context.sender.subscribe();
+
+    ws.on_upgrade(move |sock| async move {
+        let (mut tx, _) = sock.split();
+
+        tokio::spawn(async move {
+            while let Ok(msg) = subscriber.recv().await {
+                if tx
+                    .send(Message::Text(serde_json::to_string(&msg).unwrap()))
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        })
+    })
+}
+
+#[handler]
+fn index() -> String {
+    format!("OnAir {}", env!("CARGO_PKG_VERSION"))
+}
+
+fn init() -> Args {
     let args = Args::parse();
     let level = if args.debug { "debug" } else { "info" };
-    std::env::set_var("RUST_LOG", format!("actix_web={}", level));
+    std::env::set_var("RUST_LOG", level);
 
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
-    let data = web::Data::new(Mutex::new(State::new()));
+    args
+}
 
-    HttpServer::new(move || {
-        App::new()
-            .wrap(Logger::default())
-            .app_data(data.clone())
-            .route("/onair", web::get().to(show))
-            .route("/onair", web::post().to(update))
-    })
-    .bind(("0.0.0.0", args.port))?
-    .run()
-    .await
+#[tokio::main]
+async fn main() -> Result<(), std::io::Error> {
+    let args = init();
+
+    let ctx = Arc::new(Mutex::new(ContextInner::new()));
+
+    let app = Route::new()
+        .at("/", get(index))
+        .at("/state", post(update).get(check))
+        .at("/subscribe", get(subscribe))
+        .data(ctx);
+
+    Server::new(TcpListener::bind(&args.bind)).run(app).await
 }

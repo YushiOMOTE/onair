@@ -5,9 +5,11 @@ authors = ["YushiOMOTE <yushiomote@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix-files = "0.5.0"
-actix-web = "3.3.3"
 clap = { version = "3.0.14", features = ["derive"] }
-env_logger = "0.9.0"
-poem = "1.2.56"
+futures-util = "0.3.21"
+poem = { version = "1.2.56", features = ["websocket"] }
 serde = "1.0.136"
+serde_json = "1.0.78"
+tokio = { version = "1.16.1", features = ["full"] }
+tracing = "0.1.30"
+tracing-subscriber = "0.3.8"
