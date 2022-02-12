@@ -11,6 +11,7 @@ node_modules
 
 # production
 build
+dist
 
 # misc
 .DS_Store
@@ -18,6 +19,9 @@ build
 .env.development.local
 .env.test.local
 .env.production.local
+
+__pycache__
+*.spec
 
 npm-debug.log*
 yarn-debug.log*
