@@ -32,7 +32,6 @@ def update():
         res = requests.post(ENDPOINT, headers=headers, data=json.dumps(data))
     except Exception as e:
         print(e)
-    # print(res.json())
 
 
 while True:
