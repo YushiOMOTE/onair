@@ -28,13 +28,41 @@ graph LR
     B -->|GET/Websocket| C("Screen (onair-fe)")
 ```
 
-## Run
+## Setup
 
-This will run the web service.
+The project requires
+
+* `npm` for frontend
+* `rust` for backend
+
+To install dependencies,
+
+``` sh
+make setup
+```
+
+## Test the service locally
+
+This will build frontend/backend and start backend locally.
 
 ```sh
 make
 ```
+
+* Open `http://localhost:8080/view` in your browser to check the colored screen.
+* Run this command to update the state to `onair`:
+
+``` sh
+curl -X POST -d '{"onair": true}' http://localhost:8080/state
+```
+
+* Run this command to update the state to `working`:
+
+```sh
+curl -X POST -d '{"onair": false}' http://localhost:8080/state
+```
+
+* If you don't send the command for a while, the state will automatically turn `offline`.
 
 ## Build
 
