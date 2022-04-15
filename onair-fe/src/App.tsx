@@ -12,9 +12,9 @@ interface Update {
 function App() {
   const [state, setState] = useState(State.Offline);
   const received = useRef(true);
-  const [timedout, setTimedout] = useState(false);
+  const [alive, setAlive] = useState(true);
 
-  useEffect(() => {
+  const connect = () => {
     console.log(`connectiong ${ENDPOINT}`);
     const ws = new WebSocket(ENDPOINT);
 
@@ -26,28 +26,42 @@ function App() {
       const update: Update = JSON.parse(event.data);
       console.log(`updated ${update.onair}`);
       const s = update.onair ? State.OnAir : State.Standby;
-      const state = timedout ? State.Offline : s;
+      const state = alive ? s : State.Offline;
       received.current = true;
       setState(state);
-      setTimedout(false);
+      setAlive(true);
+    };
+
+    ws.onerror = (err) => {
+      console.log("connection error", err);
     };
 
     ws.onclose = () => {
       console.log("disconnected");
-    };
 
-    const interval = setInterval(() => {
-      console.log(`tick ${received.current}`);
-      if (!received.current) {
-        console.log("timed out");
-        setTimedout(true);
-        setState(State.Offline);
-      }
-      received.current = false;
-    }, 60000);
+      setTimeout(function() {
+        connect();
+      }, 1000);
+    };
+  };
+
+  const checkLiveness = () => {
+    console.log(`check liveness ${received.current}`);
+    if (!received.current) {
+      console.log("no updates, not alive");
+      setAlive(false);
+      setState(State.Offline);
+    }
+    received.current = false;
+  };
+
+  useEffect(() => {
+    connect();
+
+    const interval = setInterval(checkLiveness, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <Pane state={state} />;
 }
